@@ -16,6 +16,7 @@ import pickle
 import gzip
 import io
 import subprocess
+from multiprocessing import Pool
 
 logger = logging.getLogger(__name__)
 
@@ -139,9 +140,27 @@ def count_fasta_sequences(file_name):
         n += 1
     return n
 
+def bin_writer(bin_name, cluster, sequences, outputdir, bin_name_prefix):
+    if bin_name < 10:
+        bin = bin_name_prefix + '000' + str(bin_name) + '.fa'
+    elif bin_name >= 10 and bin_name < 100:
+        bin = bin_name_prefix + '00' + str(bin_name) + '.fa'
+    elif bin_name >= 100 and bin_name < 1000:
+        bin = bin_name_prefix + '0' + str(bin_name) + '.fa'
+    else:
+        bin = bin_name_prefix +str(bin_name) + '.fa'
+    binfile=os.path.join(outputdir,"{}".format(bin))
+    with open(binfile,"w") as f:
+        for contig_name in cluster:
+            contig_name=">"+contig_name
+            try:
+                sequence=sequences[contig_name]
+            except:
+                continue
+            f.write(contig_name+"\n")
+            f.write(sequence+"\n")
 
-
-def gen_bins(fastafile,resultfile,outputdir):
+def gen_bins(fastafile,resultfile,outputdir,n_process=12):
     # read fasta file
     sequences={}
     if fastafile.endswith("gz"):
@@ -181,31 +200,13 @@ def gen_bins(fastafile,resultfile,outputdir):
     print("Writing bins in \t{}".format(outputdir))
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
-    
-    bin_name=0
-    for _,cluster in dic.items():
-        if bin_name < 10:
-            bin = 'BIN'+ '000' + str(bin_name) + '.fa'
-        elif bin_name >= 10 and bin_name < 100:
-            bin = 'BIN'+ '00' + str(bin_name) + '.fa'
-        elif bin_name >= 100 and bin_name < 1000:
-            bin = 'BIN'+ '0' + str(bin_name) + '.fa'
-        else:
-            bin = 'BIN'+str(bin_name) + '.fa'
-        binfile=os.path.join(outputdir,"{}".format(bin))
-        with open(binfile,"w") as f:
-            for contig_name in cluster:
-                contig_name=">"+contig_name
-                try:
-                    sequence=sequences[contig_name]
-                except:
-                    continue
-                f.write(contig_name+"\n")
-                f.write(sequence+"\n")
-        bin_name+=1
+
+    p = Pool(n_process)
+    p.starmap(bin_writer, [(bin_name, cluster, sequences, outputdir, 'BIN') for bin_name, cluster in enumerate(dic.values())])
+    p.close()
 
 
-def gen_sub_bins(fastafile,resultfile,outputdir):
+def gen_sub_bins(fastafile,resultfile,outputdir,n_process=12):
     # read fasta file
     sequences={}
     if fastafile.endswith("gz"):
@@ -245,28 +246,10 @@ def gen_sub_bins(fastafile,resultfile,outputdir):
 
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
-    
-    bin_name=0
-    for _,cluster in dic.items():
-        if bin_name < 10:
-            bin = 'SUB'+ '000' + str(bin_name) + '.fa'
-        elif bin_name >= 10 and bin_name < 100:
-            bin = 'SUB'+ '00' + str(bin_name) + '.fa'
-        elif bin_name >= 100 and bin_name < 1000:
-            bin = 'SUB'+ '0' + str(bin_name) + '.fa'
-        else:
-            bin = 'SUB'+str(bin_name) + '.fa'
-        binfile=os.path.join(outputdir,"{}".format(bin))
-        with open(binfile,"w") as f:
-            for contig_name in cluster:
-                contig_name=">"+contig_name
-                try:
-                    sequence=sequences[contig_name]
-                except:
-                    continue
-                f.write(contig_name+"\n")
-                f.write(sequence+"\n")
-        bin_name+=1
+
+    p = Pool(n_process)
+    p.starmap(bin_writer, [(bin_name, cluster, sequences, outputdir, 'SUB') for bin_name, cluster in enumerate(dic.values())])
+    p.close()
 
 
 def make_random_seed():
