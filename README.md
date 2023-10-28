@@ -193,7 +193,7 @@ python ./ImputeCC.py impute --cover -v final.contigs.fa contig_info.csv Normaliz
 
 ## Implement the clustering step
 Use the module `cluster` to only run the imputation step
-**(The clustering step utilizes the imputed Hi-C matrix and thus must be implemented after the imputation step)**:
+**(the clustering step utilizes the imputed Hi-C matrix and thus must be implemented after the imputation step)**:
 ```
 python ./ImputeCC.py cluster --cover [Parameters] FASTA_file CONTIG_INFO HIC_MATRIX OUTPUT_directory
 ```
