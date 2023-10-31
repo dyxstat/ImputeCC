@@ -113,7 +113,7 @@ class FinalCluster:
         '''
         is_membership_fixed = []
         new_membership = []
-        index = len(self.bins)+1
+        index = len(self.bins)
 
         for i in self.contig_info[: , 0]:
             if i in self.bin_of_contigs:
