@@ -12,6 +12,8 @@ import scipy.sparse as scisp
 import igraph as ig
 import leidenalg
 import os
+from multiprocessing import Pool
+
 # External script
 from Script.pre_markers import Markers
 from Script.utility import match_contigs
@@ -34,7 +36,7 @@ class FinalCluster:
                  normcc_matrix, imputed_matrix, 
                  bac_mg_table, ar_mg_table, path, 
                  intra, inter, cont_weight, 
-                 min_comp, max_cont, report_quality, min_binsize):
+                 min_comp, max_cont, report_quality, min_binsize, n_process=12):
         
         self.contig_info = contig_info
         self.contig_local = contig_local
@@ -74,33 +76,12 @@ class FinalCluster:
         
         res_option = [1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
         
-        logger.info('Begin Leiden clustering...')
-        #CLustering without using information of marker genes
-        total_5_nofix = []
-        for res in res_option:             
-            part_nofix = list(leidenalg.find_partition(g , leidenalg.RBConfigurationVertexPartition , weights=wei , resolution_parameter = res , n_iterations = -1))
+        logger.info('Begin Leiden clustering with %d processes...' % (n_process))
 
-            cluster_nofix = []
-            for ci in range(len(part_nofix)):
-                if sum(self.contig_info[part_nofix[ci] , 2]) >= self.minbinsize:
-                    temp = []
-                    for id in part_nofix[ci]:
-                        temp.append(self.contig_info[id , 0])
-                    cluster_nofix.append(temp)
-     
-            num_50 = 0
-            for i in cluster_nofix:
-                _, comp, cont = self.markers.bin_quality(i)
-                if cont <= 5:
-                    if comp >= 90:
-                        num_50 += 3
-                    elif comp >= 70:
-                        num_50 += 2
-                    elif comp >= 50:
-                        num_50 += 1
-                    
-            total_5_nofix.append(num_50)
-            del part_nofix, cluster_nofix, temp
+        #CLustering without using information of marker genes
+        p = Pool(n_process)
+        total_5_nofix = p.starmap(self.leiden_clustering_without_marker_genes, [(g, leidenalg.RBConfigurationVertexPartition, wei, res) for res in res_option])
+        p.close()
         
         ##Clustering without using marker genes
         res_para_nofix = res_option[total_5_nofix.index(max(total_5_nofix))]
@@ -132,7 +113,7 @@ class FinalCluster:
         '''
         is_membership_fixed = []
         new_membership = []
-        index = len(self.bins)+1
+        index = len(self.bins)
 
         for i in self.contig_info[: , 0]:
             if i in self.bin_of_contigs:
@@ -142,38 +123,10 @@ class FinalCluster:
                 new_membership.append(index)
                 index += 1
                 is_membership_fixed.append(False)
-                
-        total_5_fix = []
-        for res in res_option:   
-            new_partition = leidenalg.RBConfigurationVertexPartition(g, new_membership , weights=wei , resolution_parameter = res)
-            optimiser = leidenalg.Optimiser()
-            _ = optimiser.optimise_partition(new_partition, is_membership_fixed=is_membership_fixed, n_iterations = -1)
-            mem = new_partition.membership   
-            
-            part_fix = [[] for i in range(len(set(mem)))]
-            for i, j in enumerate(mem):
-                part_fix[j].append(i)
 
-            cluster_fix = []
-            for ci in range(len(part_fix)):
-                if sum(self.contig_info[part_fix[ci] , 2]) >= self.minbinsize:
-                    temp = []
-                    for id in part_fix[ci]:
-                        temp.append(self.contig_info[id , 0])
-                    cluster_fix.append(temp)
-     
-            num_50 = 0
-            for i in cluster_fix:
-                _, comp, cont = self.markers.bin_quality(i)
-                if cont <= 5:
-                    if comp >= 90:
-                        num_50 += 3
-                    elif comp >= 70:
-                        num_50 += 2
-                    elif comp >= 50:
-                        num_50 += 1
-            total_5_fix.append(num_50)
-            del new_partition, optimiser, mem, part_fix, cluster_fix, temp
+        p = Pool(n_process)
+        total_5_fix = p.starmap(self.leiden_clustering_with_marker_genes, [(g, new_membership, wei, res, is_membership_fixed) for res in res_option])
+        p.close()
         
         ##Clustering without using marker genes
         res_para_fix = res_option[total_5_fix.index(max(total_5_fix))]
@@ -298,7 +251,58 @@ class FinalCluster:
                 for contig in value:
                     out.write(str(contig)+ '\t' +str(key)+ '\n')           
       
-    
+    def leiden_clustering_without_marker_genes(self, g, partition, wei, res):
+        # part_nofix = list(leidenalg.find_partition(g , leidenalg.RBConfigurationVertexPartition , weights=wei , resolution_parameter = res , n_iterations = -1))
+        part_nofix = list(leidenalg.find_partition(g , partition , weights=wei , resolution_parameter = res , n_iterations = -1))
+        cluster_nofix = []
+        for ci in range(len(part_nofix)):
+            if sum(self.contig_info[part_nofix[ci] , 2]) >= self.minbinsize:
+                temp = []
+                for id in part_nofix[ci]:
+                    temp.append(self.contig_info[id , 0])
+                cluster_nofix.append(temp)
+ 
+        num_50 = 0
+        for i in cluster_nofix:
+            _, comp, cont = self.markers.bin_quality(i)
+            if cont <= 5:
+                if comp >= 90:
+                    num_50 += 3
+                elif comp >= 70:
+                    num_50 += 2
+                elif comp >= 50:
+                    num_50 += 1
+        return num_50
+
+    def leiden_clustering_with_marker_genes(self, g, membership, wei, res, is_membership_fixed):
+        new_partition = leidenalg.RBConfigurationVertexPartition(g, membership , weights=wei , resolution_parameter = res)
+        optimiser = leidenalg.Optimiser()
+        _ = optimiser.optimise_partition(new_partition, is_membership_fixed=is_membership_fixed, n_iterations = -1)
+        mem = new_partition.membership
+        
+        part_fix = [[] for i in range(len(set(mem)))]
+        for i, j in enumerate(mem):
+            part_fix[j].append(i)
+
+        cluster_fix = []
+        for ci in range(len(part_fix)):
+            if sum(self.contig_info[part_fix[ci] , 2]) >= self.minbinsize:
+                temp = []
+                for id in part_fix[ci]:
+                    temp.append(self.contig_info[id , 0])
+                cluster_fix.append(temp)
+ 
+        num_50 = 0
+        for i in cluster_fix:
+            _, comp, cont = self.markers.bin_quality(i)
+            if cont <= 5:
+                if comp >= 90:
+                    num_50 += 3
+                elif comp >= 70:
+                    num_50 += 2
+                elif comp >= 50:
+                    num_50 += 1
+        return num_50
     
     def decontamin(self, bin2contig_ori):
         _contam_bins = []

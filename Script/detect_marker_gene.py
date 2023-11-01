@@ -11,7 +11,7 @@ def detect_marker_gene(contig_file, threads, output_dir):
     # Execution of the software
     fragScanURL = 'run_FragGeneScan.pl'
     hmmExeURL = 'hmmsearch'
-    markerURL = os.path.join(os.getcwd(), 'Script', 'marker.hmm')
+    markerURL = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'marker.hmm')
     
     # Output file for fraggenescan and hmmer 
     fragResultURL = os.path.join(output_dir , 'contigs.frag.faa')

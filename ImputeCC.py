@@ -9,6 +9,7 @@ from Script.final_cluster import FinalCluster
 from Script.pre_clustering import Clust4CheckM, PreCluster
 
 #######Import python packages
+import subprocess
 import argparse
 import warnings
 import logging
@@ -72,6 +73,8 @@ if __name__ == '__main__':
 
     cmd_pipe = subparsers.add_parser('pipeline', parents=[global_parser],
                                       description='Run the whole ImputeCC pipeline.')
+    cmd_test = subparsers.add_parser('test', parents=[global_parser],
+                                      description='Test the whole ImputeCC pipeline using the test data.')
     
     '''
     Run the whole ImputeCC pipeline
@@ -136,6 +139,20 @@ if __name__ == '__main__':
     '''
     
     args = parser.parse_args()
+
+    if args.command == 'test':
+        imputecc_dir = os.path.abspath(os.path.dirname(__file__))
+        script_path = os.path.join(imputecc_dir, 'ImputeCC.py')
+        contig_path = os.path.join(imputecc_dir, 'test_data/test_contigs.fa')
+        info_path = os.path.join(imputecc_dir, 'test_data/test_info.csv')
+        matrix_path = os.path.join(imputecc_dir, 'test_data/test_normalized_contact_matrix.npz')
+        output_dir = os.path.join(imputecc_dir, 'test_result/')
+        cmd = ' '.join(['python', script_path, 'pipeline -t 60', contig_path, info_path,  matrix_path, output_dir, '--cover -v'])
+        print('The pipeline was tested by the command: ' + cmd)
+        subprocess.run(cmd, shell=True)
+        shutil.rmtree(output_dir)
+        print('Pipeline test successfully finished...')
+        sys.exit(0)
 
     if args.version:
         print(mk_version())
