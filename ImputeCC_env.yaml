@@ -1,4 +1,4 @@
-name: MetaCC_env
+name: ImputeCC_env
 channels:
   - conda-forge
   - bioconda
