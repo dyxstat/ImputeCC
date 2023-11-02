@@ -99,7 +99,7 @@ You need to run the `NormCC` normalization module from the [MetaCC](https://gith
 to generate a NormCC-normalized Hi-C contact matrix. 
 For instance, once you install the MetaCC software, run
 ```
-python MetaCC.py norm -v final.contigs.fa MAP_SORTED.bam out_NormCC
+python /path_to_MetaCC/MetaCC.py norm -v final.contigs.fa MAP_SORTED.bam out_NormCC
 ```
 The NormCC-normalized Hi-C contact matrix and the corresponding sorted contig information are stored in
 the files ***Normalized_contact_matrix.npz*** and ***contig_info.csv*** from the output directory (i.e., out_normcc), respectively.
