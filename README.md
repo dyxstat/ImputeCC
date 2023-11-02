@@ -33,15 +33,14 @@ numpy
 pandas
 biolib
 scipy
-scikit-learn
+biopython
 igraph
+networkx
 leidenalg
 FragGeneScan
 hmmer
 checkm
 ```
-
-
 
 # Installation Guide
 We recommend using [**conda**](https://docs.conda.io/projects/conda/en/latest/user-guide/install/download.html) to install `ImputeCC`. 
@@ -52,14 +51,13 @@ Typical installation time is 1-5 minutes depending on your system.
 git clone https://github.com/dyxstat/ImputeCC.git
 ```
 
-Once complete, enter the repository folder and then create a `ImputeCC` environment using conda.
+Once complete, enter the repository folder and then create an `ImputeCC` environment using conda.
 
 
-### Enter the MetaCC folder
+### Enter the ImputeCC folder
 ```
 cd ImputeCC
 ```
-
 
 ### Construct the conda environment in the linux or MacOS system
 ```
@@ -75,7 +73,7 @@ conda activate ImputeCC_env
 # A test demo
 To test the software, please use
 ```
-python ./ImputeCC.py test
+python /path_to_ImputeCC/ImputeCC.py test
 ```
 
 
@@ -87,7 +85,8 @@ For the shotgun library, de novo metagenome assembly is produced by an assembly 
 ```
 megahit -1 SG1.fastq.gz -2 SG2.fastq.gz -o ASSEMBLY --min-contig-len 1000 --k-min 21 --k-max 141 --k-step 12 --merge-level 20,0.95
 ```
-Hi-C paired-end reads are aligned to assembled contigs using a DNA mapping software, such as BWA MEM. Then, samtools with parameters ‘view -F 0x904’ is applied to remove unmapped reads, supplementary alignments, and secondary alignments. BAM file needs to be sorted **by name** using 'samtools sort'.
+Hi-C paired-end reads are aligned to assembled contigs using a DNA mapping software, such as BWA MEM. Then, samtools with parameters ‘view -F 0x904’ is applied to remove unmapped reads, 
+supplementary alignments, and secondary alignments. BAM file needs to be sorted **by name** using 'samtools sort'.
 ```
 bwa index final.contigs.fa
 bwa mem -5SP final.contigs.fa hic_read1.fastq.gz hic_read2.fastq.gz > MAP.sam
@@ -97,7 +96,7 @@ samtools sort -n MAP_UNSORTED.bam -o MAP_SORTED.bam
 
 ### Generating normalized metagenomic Hi-C contact matrix by NormCC
 You need to run the `NormCC` normalization module from the [MetaCC](https://github.com/dyxstat/MetaCC) software 
-to generate NormCC-normalized Hi-C contact matrix. 
+to generate a NormCC-normalized Hi-C contact matrix. 
 For instance, once you install the MetaCC software, run
 ```
 python MetaCC.py norm -v final.contigs.fa MAP_SORTED.bam out_NormCC
@@ -107,20 +106,20 @@ the files ***Normalized_contact_matrix.npz*** and ***contig_info.csv*** from the
 ***Normalized_contact_matrix.npz*** is a sparse matrix of normalized Hi-C contact maps in python scipy sparse csr format, and
 ***contig_info.csv*** stores the information of assembled contigs with three columns (contig name, the number of restriction sites on contigs, and contig length).
 
-Then you can opt to move the files ***Normalized_contact_matrix.npz*** and ***contig_info.csv*** to the directory of the ImputeCC folder.
+The files ***Normalized_contact_matrix.npz*** and ***contig_info.csv*** will serve as the input for the ImputeCC pipeline.
 
 
 # Usage
 ## Implement the ImputeCC pipeline
-The ImputeCC binning pipeline includes two main steps, i,e, the imputation step and the clustering step.
-Use the module `pipeline` to run both steps in succession:
+The ImputeCC binning pipeline comprises two main steps: the imputation step and the clustering step. 
+Use the pipeline module to execute both steps sequentially:
 ```
-python ./ImputeCC.py pipeline [Parameters] FASTA_file CONTIG_INFO HIC_MATRIX OUTPUT_directory
+python /path_to_ImputeCC/ImputeCC.py pipeline [Parameters] FASTA_file CONTIG_INFO HIC_MATRIX OUTPUT_directory
 ```
 ### Parameters
 ```
 --rwr-rp: Restarting probability for CRWR (default 0.5)
---rwr-thres: Percentile threshold, determining that Hi-C contacts falling below this threshold
+--rwr-thres: Percentile threshold, Hi-C contacts falling below this threshold
               will be discarded from the imputed matrix at each random walk step (default 80)
 --intra: percentile threshold to assign the contigs to existing preliminary bins in the preclustering step (default 50)
 --inter: percentile threshold to assign the contigs to new preliminary bins in the preclustering step (default 0)
@@ -160,12 +159,12 @@ python ./ImputeCC.py pipeline -v final.contigs.fa contig_info.csv Normalized_con
 ## Implement the imputation step
 Use the module `impute` to only run the imputation step:
 ```
-python ./ImputeCC.py impute --cover [Parameters] FASTA_file CONTIG_INFO HIC_MATRIX OUTPUT_directory
+python /path_to_ImputeCC/ImputeCC.py impute --cover [Parameters] FASTA_file CONTIG_INFO HIC_MATRIX OUTPUT_directory
 ```
 ### Parameters
 ```
 --rwr-rp: Restarting probability for CRWR (default 0.5)
---rwr-thres: Percentile threshold, determining that Hi-C contacts falling below this threshold
+--rwr-thres: Percentile threshold, Hi-C contacts falling below this threshold
               will be discarded from the imputed matrix at each random walk step (default 80)
 --gene-cov: Gene coverage used to detect marker genes (default 0.9)
 --max-markers: The maximum number of marker-gene-containing contigs (default 8000) 
@@ -195,7 +194,7 @@ python ./ImputeCC.py impute --cover -v final.contigs.fa contig_info.csv Normaliz
 Use the module `cluster` to only run the imputation step
 **(the clustering step utilizes the imputed Hi-C matrix and thus must be implemented after the imputation step)**:
 ```
-python ./ImputeCC.py cluster --cover [Parameters] FASTA_file CONTIG_INFO HIC_MATRIX OUTPUT_directory
+python /path_to_ImputeCC/ImputeCC.py cluster --cover [Parameters] FASTA_file CONTIG_INFO HIC_MATRIX OUTPUT_directory
 ```
 ### Parameters
 ```
