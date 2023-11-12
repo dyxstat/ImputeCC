@@ -248,7 +248,7 @@ def gen_sub_bins(fastafile,resultfile,outputdir,n_process=12):
         os.makedirs(outputdir)
 
     p = Pool(n_process)
-    p.starmap(bin_writer, [(bin_name, cluster, {">"+contig_name: sequences[">"+contig_name] for contig_name in cluster}, outputdir, 'BIN') for bin_name, cluster in enumerate(dic.values())])
+    p.starmap(bin_writer, [(bin_name, cluster, {">"+contig_name: sequences[">"+contig_name] for contig_name in cluster}, outputdir, 'SUB') for bin_name, cluster in enumerate(dic.values())])
     p.close()
 
 
